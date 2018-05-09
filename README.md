@@ -20,9 +20,9 @@ First, run `lexer.py`. This will create a `data` directory with a random inter-p
 
 Secondly, to convert the train/valid/test data to CNTK compatible '.ctf' input files, please use:
 ``
-python txt2ctf.py --map data/source_wl data/target_wl --input data/train.txt --output data/train.ctf
-python txt2ctf.py --map data/source_wl data/target_wl --input data/valid.txt --output data/valid.ctf
-python txt2ctf.py --map data/source_wl data/target_wl --input data/test.txt --output data/test.ctf
+python txt2ctf.py --map ../data/source_wl ../data/target_wl --input ../data/train.txt --output ../data/train.ctf
+python txt2ctf.py --map ../data/source_wl ../data/target_wl --input ../data/valid.txt --output ../data/valid.ctf
+python txt2ctf.py --map ../data/source_wl ../data/target_wl --input ../data/test.txt --output ../data/test.ctf
 ``
 
 Finally, run `infer.py`, which will train the network over 10 epochs and print validation error at the end of every epoch. Note that the size of an epoch is currently set to ~17.9M train tokens, based on the data we used. If your `lexer.py` printed a different number for "Overall tokens: ... train", please change this number to ensure that the learning rate decay matches the real epoch length.
