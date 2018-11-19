@@ -1,5 +1,5 @@
 # DeepTyper
-This repository contains the code and replication package for DeepTyper: a deep learning engine recommending type annotations for JavaScript and TypeScript.
+This repository contains the code and replication package for [DeepTyper: a deep learning engine recommending type annotations for JavaScript and TypeScript](http://vhellendoorn.github.io/PDF/fse2018-j2t.pdf) (2018).
 
 ## Webservice (W.I.P.)
 We are in the process of setting up a website through which DeepTyper's pre-trained models can be queried. The corresponding code for the (C# web-app) project will be uploaded here as well.
