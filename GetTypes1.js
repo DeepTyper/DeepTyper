@@ -25,7 +25,7 @@ function traverseProject(org, project) {
 		|| org == "funfix" || org == "improbable-eng" || org == "scikit-rf" || org == "timbertson" || project == "meteor-angular-socially")
 		return
 	let dir = root + "/" + org + "/" + project;
-	let outFile = "./graphs/" + project + ".json";
+	let outFile = "./graphs/" + org + "__" + project + ".json";
 	let projectGraphs = traverse(dir);
 	var outputStream = fs.createWriteStream(outFile);
 	fs.writeFileSync(outFile, JSON.stringify(projectGraphs), 'utf8');
@@ -69,10 +69,9 @@ function createGraphs(inputDirectory) {
 	var graphs = []
 	for (const sourceFile of program.getSourceFiles()) {
 		var filename = sourceFile.getSourceFile().fileName;
-		if (filename.endsWith('.d.ts')) continue;
+		if (filename.endsWith('.d.ts') || filename.endsWith('.min.js')) continue;
 		let relativePath = path.relative(inputDirectory, filename);
 		if (relativePath.startsWith("..")) continue;
-		
 		try {
 			graphs.push(createGraph(sourceFile, checker))
 		} 
@@ -85,24 +84,26 @@ function createGraphs(inputDirectory) {
 }
 
 // Global variables to track when visiting an AST
-var idx, lastToken, lastUse = {}
+var idx, lastToken, lastUse;
 function createGraph(sourceFile, checker) {
 	// Reset global variables for each graph
 	var graph = {"File": sourceFile.getSourceFile().fileName, "Edges": {"Parent": [], "NextLexicalUse": [], "NextToken": []}, "Nodes": {}, "CompilerTypes": {}, "HumanTypes": {}};
 	idx = 0;
 	lastToken = null;
-	lastUse = {}
+	lastUse = Object.create(null) // Important: must not use standard {} dict because it conflates fields with keys (e.g. try storing "hasOwnProperty")
 	visit(sourceFile, checker, graph, null);
 	return graph
 }
 
 function visit(node, checker, graph, parent) {
 	var curr_idx = idx
-	idx += 1
-	
-	// Get node text (either non-terminal name or leaf text) and store
+	// Get node text (either non-terminal name or leaf text) and skip if empty
 	let textVal = node.getChildCount() == 0 ? node.getText() : ts.SyntaxKind[node.kind]
+	if (textVal.length == 0) return;
+	
+	// Otherwise, store it and increment idx
 	graph.Nodes[curr_idx] = textVal
+	idx += 1
 	
 	// Add parent edge
 	if (parent != null) graph.Edges.Parent.push([curr_idx, parent])
