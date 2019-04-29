@@ -7,6 +7,7 @@ var JSONStream = require( "JSONStream" );
 var buckets = require('buckets-js');
 
 function print(x) {
+	x = x || ""
 	console.log(x);
 }
 
@@ -122,35 +123,56 @@ function visit(node, checker, graph, parent) {
 				// Skip; includes in-line structure types and unresolved types. May be revisited
 			}
 			else {
-				if (type.startsWith("\"")) type = "$string$";
-				else if (type.match("[0-9\.]+[flLF]?")) type = "$number$";
-				else if (type === "true" || type === "false") type = "$boolean$";
-				else type = '$' + type + '$';
+				if (type.startsWith("\"")) type = "string"; // TODO: check if always true
+				else if (type.match("[0-9\.]+[flLF]?")) type = "number";
+				else if (type === "true" || type === "false") type = "boolean";
+				else type = type;
 				graph.CompilerTypes[curr_idx] = type
 			}
 		}
 	}
 	
-	// Recurse if applicable, but check for optionally typed nodes
-	var check_for_types = ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertySignature(node) ||
-		ts.isPropertyDeclaration(node) || ts.isMappedTypeNode(node) || ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node);
-	if (node.getChildCount() > 0) {
-		for (const child of node.getChildren()) {
-			if (ts.isTypeNode(child) || ts.isTypeReferenceNode(child) || ts.isTypeParameterDeclaration(child)) {
-				graph.HumanTypes[curr_idx] = child.getText()
-			}
-			else {
-				visit(child, checker, graph, curr_idx);
-			}
-		}
-	}
-	else {
-		// Add next-token edge for (non-first) terminals
+	// For terminals, just add next-token edge (if not first)
+	if (node.getChildCount() == 0) {
 		if (lastToken != null) {
 			graph.Edges.NextToken.push([lastToken, curr_idx]);
 		}
 		lastToken = curr_idx;
 	}
+	else {
+		let children = node.getChildren();
+		// Before recursing, check for optionally typed nodes
+		var check_for_types = ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertySignature(node) ||
+			ts.isPropertyDeclaration(node) || ts.isMappedTypeNode(node) || ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node);
+		let toSkip = -1; // Track index of type annotation (if any)
+		let toAssign = -1; // Track index of identifier to assign type too (if any); we assign to the ID to allow for comparable training and testing setup
+		for (const cix in children) {
+			let child = children[cix]
+			// Heuristically, we align the type annotation with the first identifier. This appears correct for all common cases (functions, parameters, local variables), but may deserve further investigation
+			if (toAssign < 0 && ts.SyntaxKind[child.kind] === "Identifier") toAssign = cix; 
+			if (ts.isTypeNode(child) || ts.isTypeReferenceNode(child) || ts.isTypeParameterDeclaration(child)) {
+				toSkip = cix;
+				break; // Break if we find an alignment; the identifier to assign it too must anyways occur before this point
+			}
+		}
+		if (toSkip <= 0 || getText(children[toSkip - 1]) !== ":") toSkip = -1; // Ignore type references that are not proper syntactic annotations
+		if (toSkip > 0 && (children[toSkip].getText() === "this" || children[toSkip].getText() === "null")) toSkip = -1; // Skip these odd cases; deserves further investigation
+		for (const cix in children) {
+			if (toSkip > 0 && (cix == toSkip - 1 || cix == toSkip)) continue; // Skip colon-token and type annotation
+			let child = children[cix]
+			visit(child, checker, graph, curr_idx);
+			
+			// Add type annotation if applicable.
+			if (toSkip > 0 && cix === toAssign) {
+				// Since toAssign is an Identifier, we assume we can safely "guess" its graph index as being the latest index (minus 1)
+				graph.HumanTypes[idx - 1] = children[toSkip].getText()
+			}
+		}
+	}
+}
+
+function getText(node) {
+	return node.getChildCount() == 0 ? node.getText() : ts.SyntaxKind[node.kind];
 }
 
 // Util function to read a directory recursively with some in-built heuristics. Skips git directory and includes only JS/TS files that are less than one megabyte (to avoid auto-generated code)
