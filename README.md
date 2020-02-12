@@ -22,7 +22,7 @@ The code is implemented in [CNTK](https://github.com/Microsoft/CNTK).
 First, run `lexer.py`. This will store a random inter-project split of 80% train, 10% valid & 10% test data in the data directory. It also creates a source (token) and target (type) vocabulary and a `test-projects.txt` file that can be used by some analysis scripts to retrieve which projects were chosen for testing purposes.
 - By default, the lexer cuts of vocabularies at 10 tokens and drops files of more than 5K characters. To change these settings, please change those numbers on lines 9-11 of `lexer.py`
 
-Secondly, to convert the train/valid/test data to CNTK compatible '.ctf' input files, please use:
+Secondly, to convert the train/valid/test data to CNTK compatible '.ctf' input files, please use CNTK's [txt2ctf script](https://github.com/microsoft/CNTK/blob/master/Scripts/txt2ctf.py):
 
 ```
 python txt2ctf.py --map data/source_wl data/target_wl --input data/train.txt --output data/train.ctf
